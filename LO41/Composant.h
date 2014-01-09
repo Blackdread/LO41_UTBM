@@ -6,9 +6,12 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__Composant__
-#define __LO41__Composant__
+#ifndef LO41__Composant
+#define LO41__Composant
 
-#include <iostream>
+#define C1 101
+#define C2 102
+#define C3 103
+#define C4 104
 
-#endif /* defined(__LO41__Composant__) */
+#endif 

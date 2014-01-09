@@ -6,9 +6,14 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__Operation__
-#define __LO41__Operation__
+#ifndef LO41__Operation_h
+#define LO41__Operation_h
 
-#include <iostream>
+#define Op1 1
+#define Op2 2
+#define Op3 3
+#define Op4 4
+#define Op5 5
+#define Op6 6
 
-#endif /* defined(__LO41__Operation__) */
+#endif

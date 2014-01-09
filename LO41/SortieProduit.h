@@ -6,9 +6,23 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__SortieProduit__
-#define __LO41__SortieProduit__
+#ifndef LO41__SortieProduit
+#define LO41__SortieProduit
 
-#include <iostream>
+#include "voidBuf.h"
+#include <pthread.h>
+#include "anneauCircu.h"
+#include "ProducteurComposant.h"
 
-#endif /* defined(__LO41__SortieProduit__) */
+int continuerSortie;
+
+int nbProduitSortie;
+
+// Pour le moment je choisi de ne faire sortir que des produits
+voidBuf produitsSortis;
+
+void initSortieProduit();
+
+void th_verifSortieProduit();
+
+#endif 

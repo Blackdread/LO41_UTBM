@@ -9,25 +9,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "strBuf.h"
+#include "voidBuf.h"
 
-void initBuf(strBuf* buf, int capa){
+void initBuf(voidBuf* buf, int capa){
     buf->capa = capa;
-    buf->s = (char *)malloc(capa*sizeof(char));
+    buf->nbElement = 0;
+    buf->buffer = (void **)malloc(capa*sizeof(void*));
+    //buf->buffer[0] = (void *)malloc(sizeof(void*));
 }
-void appendBuf(strBuf* buf, char* s){
-    int u = (int)strlen(s), u1 = (int)strlen(buf->s), tot = u1 + u;
-    printf("total: %d\n",tot);
-    if(tot > buf->capa){
-        buf->s = (char *)realloc(buf->s, tot*sizeof(char));
-        buf->capa = tot;
-        printf("reallouer\n");
+void appendBuf(voidBuf* buf, void* s){
+    printf("buffer total: %d %d\n",buf->nbElement, buf->capa);
+    if(buf->nbElement+1 > buf->capa){
+        buf->buffer = (void **)realloc(buf->buffer, (buf->capa+1)*sizeof(void*));
+        buf->capa = buf->capa+1;
+        printf("buffer reallouer\n");
     }
-    int i;
-    for(i=0;i<u;i++)
-        buf->s[u1+i] = s[i];
-    buf->s[u1+i]='\0';
+    
+    buf->buffer[buf->nbElement] = s;
+    buf->nbElement = buf->nbElement+1;
+    
 }
-char* readBuf(strBuf* buf){
-    return buf->s;
+
+void* readBuf(voidBuf* buf, int pos){
+    return buf->buffer[pos];
+}
+
+void printVoidBuf(voidBuf* buf){
+    int i;
+    for(i=0 ; i < buf->nbElement ; i++)
+        printf("buf %d\n",(int)buf->buffer[i]);
+}
+
+void libererBuf(voidBuf* buf){
+    /*
+    int i;
+    for(i=0 ; i < buf->nbElement ; i++)
+        free(buf->buffer[i]); // ATTENTION ne stocker que des elements avec utilisation de malloc !
+    */
+     free(buf->buffer);
 }

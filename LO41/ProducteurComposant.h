@@ -6,9 +6,27 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__ProducteurComposant__
-#define __LO41__ProducteurComposant__
+#ifndef LO41__ProducteurComposant
+#define LO41__ProducteurComposant
 
-#include <iostream>
+#include "Composant.h"
+#include <pthread.h>
+#include "anneauCircu.h"
 
-#endif /* defined(__LO41__ProducteurComposant__) */
+int continuerProducteur;
+
+// Le nb de composant au total qui seront envoye
+int nbC1;
+int nbC2;
+int nbC3;
+int nbC4;
+
+void initProducteur();
+
+// Renvoie 1 s'il reste des composants a envoyer
+int resteTIlComposant();
+int recupererUnComposant();
+
+void th_creerComposantEtAjoutDansAnneau();
+    
+#endif

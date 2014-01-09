@@ -6,9 +6,21 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__FactoryRobot__
-#define __LO41__FactoryRobot__
+#ifndef LO41__FactoryRobot
+#define LO41__FactoryRobot
 
-#include <iostream>
+#include "Robots.h"
 
-#endif /* defined(__LO41__FactoryRobot__) */
+/* Pour le moment, je commente car j'ai une inclusion circulaire en mettant ca la
+ // C'est donc mis dans Robots.h
+#define R1 1
+#define R2 2
+#define R3 3
+#define R4 4
+#define R5 5
+#define R6 6
+//*/
+
+robot * creerRobot(int numRobot);
+
+#endif

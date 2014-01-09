@@ -6,9 +6,34 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__PileFIFO__
-#define __LO41__PileFIFO__
+#ifndef LO41__PileFIFO
+#define LO41__PileFIFO
 
-#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
 
-#endif /* defined(__LO41__PileFIFO__) */
+typedef struct _maillon{
+    struct _maillon *next;
+    int value;// je pourrais mettre a la place de int -> void* ainsi j'aurais une pile fifo pouvant contenir tout
+}maillon;
+
+typedef struct _pileFIFO{
+    maillon *sommet;
+    //int nbElement;
+}pileFIFO;
+
+void initPileFIFO(pileFIFO* pile);
+
+void push(pileFIFO* pile, int value);
+int pop(pileFIFO* pile);
+int isEmpty(const pileFIFO* pile);
+
+void vider(pileFIFO* pile);
+
+int getSommetValue(pileFIFO* pile);
+
+// renvoie -1 si a atteint la fin
+int getValueAt(maillon* mail, int pos);
+
+
+#endif

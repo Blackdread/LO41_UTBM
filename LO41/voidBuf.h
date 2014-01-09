@@ -6,16 +6,24 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef TP1_strBuf_h
-#define TP1_strBuf_h
+#ifndef LO41_voidBuf
+#define LO41_voidBuf
+
+#include <stdio.h>
+#include <stdlib.h>
 
 typedef struct {
     int capa;
-    char *s;
-} strBuf;
+    int nbElement;
+    void **buffer;
+} voidBuf;
 
-void initBuf(strBuf* buf, int capa);
-void appendBuf(strBuf* buf, char* s);
-char* readBuf(strBuf* buf);
+void initBuf(voidBuf* buf, int capa);
+void appendBuf(voidBuf* buf, void* s);
+void* readBuf(voidBuf* buf, int pos);
+
+void printVoidBuf(voidBuf* buf);
+
+void libererBuf(voidBuf* buf);
 
 #endif

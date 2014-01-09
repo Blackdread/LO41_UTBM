@@ -6,9 +6,30 @@
 //  Copyright (c) 2013 yoann. All rights reserved.
 //
 
-#ifndef __LO41__Produit__
-#define __LO41__Produit__
+#ifndef LO41__Produit
+#define LO41__Produit
 
-#include <iostream>
+#include "PileFIFO.h"
 
-#endif /* defined(__LO41__Produit__) */
+typedef struct _produit{
+    int numProduit;//juste pour l'identifier
+    
+    // Ici on ne cherche pas a stocker differents composant pour creer un produit
+    // car le sujet montre que pour un produit on a besoin que d'un seul type de composant
+    int nbCNecessaire;
+    int composant;
+    
+    // le 1er element est l'operation a faire prochainement
+    pileFIFO listeDesOperationRequired;
+    
+}produit;
+
+int isProduitT0Done(const produit *prod);
+int isProduitDone(const produit *prod);
+
+int popNextOp(produit *prod);
+
+// n'enleve pas l'operation
+int getNextOp(produit *prod);
+
+#endif
