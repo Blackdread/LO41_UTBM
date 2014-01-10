@@ -10,10 +10,10 @@
 
 
 void initProducteur(){
-    nbC1 = 3*1;
-    nbC2 = 3*1;
+    nbC1 = 3*10;
+    nbC2 = 3*10;
     nbC3 = 1*4000;
-    nbC4 = 2*1;
+    nbC4 = 2*10;
     
     continuerProducteur = 1;
 }

@@ -1,0 +1,29 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1265
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural
+
+\f0\fs24 \cf0 La compilation est faite \'e0 partir d\'92un makefile (test\'e9 et fonctionne sur Mac OS X).\
+\
+make : pour cr\'e9er les .o et l\'92ex\'e9cutable (./lo41)\
+make clean : nettoie les .o et l\'92ex\'e9cutable\
+./lo41 pour lancer le programme.\
+\
+Des commandes sont disponibles :\
+Ctrl+c -> arr\'eater le programme proprement (interception de signal)\
+r*s -> pour arr\'eater un robot (remplacer * par le num\'e9ro du robot)\
+r*m -> pour changer le mode du robot (remplacer * par le num\'e9ro du robot)\
+\
+Il y a eu utilisation du Pattern Factory pour les robots et les produits.\
+\
+Le mode normal et d\'e9grad\'e9 fonctionnent, savoir si un composant est int\'e9ressant pour un robot se fait \'e0 partir de la fonction 
+\f1\fs22 \CocoaLigature0 isComposantUsefulToBeTaken(\'85) 
+\f0\fs24 et pour savoir si le robot peut r\'e9aliser l\'92op\'e9ration suivante c\'92est la fonction 
+\f1\fs22 isProduitNextOpCanBeDone(\'85)\
+
+\f0\fs24 \
+Il y a 1 mutex et 2 conditions pour l\'92ensemble du projet.\
+\
+Le producteur de composant peut en cr\'e9er une infinit\'e9.\
+}

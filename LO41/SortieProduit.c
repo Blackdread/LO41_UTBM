@@ -23,8 +23,6 @@ void th_verifSortieProduit(){
         
         pthread_mutex_unlock(&mutex_anneau);
         if(getPositionType(POS_C_P_SORTIE) == TYPE_PROD){
-           // produit* prod = (produit*)prendreElement(POS_C_P_SORTIE);
-           // appendBuf(&produitsSortis, (void*)prod);
             produit* prod = (produit*)getPointeur(POS_C_P_SORTIE);
             if(isProduitDone(prod)){
                 printf("Un produit a ete sortie Prod%d et total =%d\n",prod->numProduit, nbProduitSortie);

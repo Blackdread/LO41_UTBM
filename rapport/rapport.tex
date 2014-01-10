@@ -89,8 +89,7 @@ Dans le cadre de l’unité de valeur “LO41 : Système d'exploitation : Princi
 Le but du projet est de réaliser un approvisionnement de composants matériels et la gestion du processus de fabrication d'une gamme de produits.\\
 On doit mettre en oeuvre une chaîne de montage "en anneau" pilotée par des robots, sa particularité est que la chaîne a 16 sections pouvant contenir soit des composants servant à la fabrication de produit, des produits en cours de fabrication ou des produits finaux.\\
 Ces robots sont au nombre de 6 et ont deux modes différents (mode normal et dégradé), ils ont chacun leurs caractéristiques propres (opération normal et opérations en mode dégradé).\\
-Les composants servent à créer le produit (1ère opération du produit).
-
+Les composants servent à créer le produit (1ère opération du produit).\\\\
 Le projet doit être codé en C et utilisé l'une (ou plusieurs) des méthodes de synchronisation vu en cours:
 \begin{itemize}
 \item Mutex
@@ -412,6 +411,14 @@ void procederRemiseDuProduitSurAnneau(int positionSurAnneau, robot *robot);
 
 On a une seule fonction qui permet de gérer n'importe quel robot, c'est donc modulable et le changement ne se fait que dans cette fonction, on n'a pas de code copier.\\
 Et la création des différents robots se fait grâce au FactoryRobot.
+
+
+Les robots vont prendre possesion du mutex, puis attendre que l'anneau est tourné, une fois qu'ils ont repris possession du mutex ils incrémentent un int pour notifier l'anneau qu'il y a des éléments qui y accède.\\
+Ce que qu'ils font ensuite est la création d'un produit en vérifiant auparavant que c'est possible sinon ils regardent s'il y a quelque chose à prendre sur l'anneau (à l'emplacement qu'il leur a été assigné) soit c'est vide soit c'est un composant soit c'est un produit.\\
+Suivant ce que c'est, pour le cas où c'est un composant, ils le prendront et s'ils ont un produit à déposer aussi ils vont le déposer tout en prenant l'élément sur l'anneau, ainsi on ne perd pas de temps.
+
+
+L'algorithme permet aussi à un robot de faire plusieurs opérations sur un produit sans le remettre sur l'anneau si les opérations suivantes sont faisables par le robot.
 \begin{lstlisting}[caption=Fonction thread des robots]
 void th_robot(void* arg[]){
 //void th_robot(void *numRob, robot *robot){
@@ -525,7 +532,7 @@ void th_robot(void* arg[]){
     printf("Thread robot%d terminer\n", numRobot);
 }
 \end{lstlisting}
-\subsection{Operation}
+\subsection{Opération}
 La représentation des opérations est juste des "define", on a aucune fonction.
 \begin{lstlisting}[caption=Représentation des opérations]
 #ifndef LO41__Operation_h
@@ -579,6 +586,7 @@ typedef struct _produit{
 int isProduitT0Done(const produit *prod);
 int isProduitDone(const produit *prod);
 
+// retourne le int de l'operation suivante sinon -1
 int popNextOp(produit *prod);
 
 // n'enleve pas l'operation
@@ -612,7 +620,9 @@ int getNextOp(produit *prod){
 }
 \end{lstlisting}
 \subsection{SortieProduit}
-
+"SortieProduit" permet de faire sortir les produits finis de l'anneau, on a le choix de les stocker dans la mémoire ou de les supprimer directement étant donné que l'on en fait rien après, c'est la suppression immédiate qui a été retenu pour éviter des soucis de mémoire.\\
+Le soucis de mémoire est dû au fait que le buffer peut avoir une taille infinie grâce au malloc et realloc, hors le realloc prend des blocs entier ce qui signifie qu'il ne fragmente pas ce qu'il alloue.\\
+Le mieux serait donc d'utiliser une pile (pileFIFO) pour ainsi avoir tout les produits dans la mémoire un peu partout ce qui permet d'utiliser la mémoire au maximum.
 \begin{lstlisting}[caption=Représentation de la sortie des produits finis]
 #ifndef LO41__SortieProduit
 #define LO41__SortieProduit
@@ -636,8 +646,58 @@ void th_verifSortieProduit();
 #endif 
 \end{lstlisting}
 
-\subsection{PileFIFO}
+Le thread de sortie des produits est fait de telle sorte :
+\begin{itemize}
+\item Demande d'accès à l'anneau
+\item Regarder si le produit sur l'emplacement de sortie est un produit fini
+\item Si c'est un produit fini on le sort sinon rien
+\item Signaler l'anneau que l'on n'y accède plus
+\item Recommencer
+\end{itemize}
+\begin{lstlisting}[caption=Fonction thread SortieProduit]
+void th_verifSortieProduit(){
+    while(continuerSortie == 1){
+        pthread_mutex_lock(&mutex_anneau);
+        // On attend tjr que l'anneau est tournee
+        pthread_cond_wait(&cond_anneauATourner, &mutex_anneau);
+        nbElementQuiAccedeAnneau++;
+        
+        pthread_mutex_unlock(&mutex_anneau);
+        if(getPositionType(POS_C_P_SORTIE) == TYPE_PROD){
+            produit* prod = (produit*)getPointeur(POS_C_P_SORTIE);
+            if(isProduitDone(prod)){
+                printf("Un produit a ete sortie Prod%d et total =%d\n",prod->numProduit, nbProduitSortie);
+                
+                // *********************************
+                // pour des raisons de memoire vive, soit on stocke les produits soit on les supprime
+                
+                //On garde mais attention a la memoire !
+                //appendBuf(&produitsSortis, prendreElement(POS_C_P_SORTIE));
+                
+                // On supprime et liberation de la memoire
+                free(prendreElement(POS_C_P_SORTIE));
+                // *********************************
+                
+                nbProduitSortie++;
+            }else
+                printf("Produit non sortie Prod%d\n",prod->numProduit);
+        }else
+            printf("Produit non sortie car s'en n'est pas un :)\n");
+        
+        pthread_mutex_lock(&mutex_anneau);
+        nbElementQuiAccedeAnneau--;
+        pthread_cond_signal(&cond_anneauAttenteAcces);
+        pthread_mutex_unlock(&mutex_anneau);
+    }
+    printf("Thread verif Sortie produits terminer\n");
+}
+\end{lstlisting}
 
+\subsection{PileFIFO}
+PileFIFO permet, d'où son nom, de créer une pile FIFO. Celle décrite ci-dessous stocke des int mais il est possible de la modifier pour avoir des void*.\\
+
+
+Cette pile a permis d'avoir une pile d'opération restante à faire pour un produit par exemple.
 \begin{lstlisting}[caption=Représentation de la pile FIFO]
 #ifndef LO41__PileFIFO
 #define LO41__PileFIFO
@@ -672,7 +732,8 @@ int getValueAt(maillon* mail, int pos);
 \end{lstlisting}
 
 \subsection{voidBuf}
-
+"voidBuf" permet d'avoir un buffer de void* qui a une taille dynamique grâce à l'utilisation des malloc et des realloc.\\
+L'intêret de ce voidBuf est qu'il peut contenir de tout.
 \begin{lstlisting}[caption=Représentation d'un buffer de void*]
 #ifndef LO41_voidBuf
 #define LO41_voidBuf
@@ -696,62 +757,10 @@ void libererBuf(voidBuf* buf);
 
 #endif
 \end{lstlisting}
-\section{Le choix de l'utilisation des threads}
-\subsection{La synchronisation entre les différents threads}
-\section{Le Factory Pattern : patron de conception}
-La fabrique (factory method) est un patron de conception créationnel utilisé en programmation orientée objet. Elle permet d'instancier des objets dont le type est dérivé d'un type abstrait. La classe exacte de l'objet n'est donc pas connue par l'appelant.
-\subsection{Implémentation dans le projet}
-Malgré le fait que le pattern Factory est supposé être utilisé pour la programmation orientée objet, nous avons pensé que ce pattern convenait très bien à ce que nous voulions faire.
-
-
-Ce pattern a été utilisé pour FactoryRobot et FactoryProduit, ceci a permis de regroupé tout ce qui doit être fait lors de la création d'un robot ou produit.\\
-De plus ce pattern permet une clarté du code et une meilleur essance dans la création des différents robots/produits, et ça permet aussi de modifié ou ajouter de nouveaux éléments dans les factory, c'est donc modulable.
-\subsubsection{FactoryRobot}
-\begin{lstlisting}[caption=Factory des robots]
-#ifndef LO41__FactoryRobot
-#define LO41__FactoryRobot
-
-#include "Robots.h"
-
-/* Pour le moment, je commente car j'ai une inclusion circulaire en mettant ca la
- // C'est donc mis dans Robots.h
-#define R1 1
-#define R2 2
-#define R3 3
-#define R4 4
-#define R5 5
-#define R6 6
-//*/
-
-robot * creerRobot(int numRobot);
-
-#endif
-\end{lstlisting}
-\subsubsection{FactoryProduit}
-\begin{lstlisting}[caption=Factory des Produits]
-#ifndef LO41__FactoryProduit
-#define LO41__FactoryProduit
-
-#include "Produit.h"
-#include "Composant.h"
-#include "Operation.h"
-
-#define Prod1 1
-#define Prod2 2
-#define Prod3 3
-#define Prod4 4
-
-produit* creerProduit(int numProduit);
-
-// renvoie le numDuProduit si suffisament de composant pour le creer / fonction special du au sujet et un produit n'a besoin que d'un seul type de composant / sinon renvoie 0
-int hasEnoughComposantToDoProd(int nb, int compo);
-
-#endif
-\end{lstlisting}
-
-\subsection{Conclusion du Pattern Factory et son utilité}
 
 \section{Le producteur et les "lecteurs"}
+Le producteur va être ProducteurComposant qui va créer des composants et les mettre sur l'anneau.\\
+Le lecteur va être SortieProduit qui récupère juste les produits finis. Les robots sont les deux à la fois puisqu'ils récupère des éléments dans le buffer (l'anneau) et écrivent aussi dans celui-ci.
 \subsection{ProducteurComposant}
 \begin{lstlisting}[caption=Représentation du producteur de composant]
 #ifndef LO41__ProducteurComposant
@@ -778,6 +787,18 @@ int recupererUnComposant();
 void th_creerComposantEtAjoutDansAnneau();
     
 #endif
+\end{lstlisting}
+
+Il est possible de mettre autant de composants que l'on souhaite.
+\begin{lstlisting}[caption=Initialisation du producteur de composant]
+void initProducteur(){
+    nbC1 = 3*10000;
+    nbC2 = 3*10000;
+    nbC3 = 1*4000;
+    nbC4 = 2*30000;
+    
+    continuerProducteur = 1;
+}
 \end{lstlisting}
 
 \begin{lstlisting}[caption=Fonction thread du producteur]
@@ -809,14 +830,179 @@ void th_creerComposantEtAjoutDansAnneau(){
 }
 \end{lstlisting}
 
-\chapter{Modélisation en Réseau de Pétri}
+\section{Le choix de l'utilisation des threads}
+Tous les threads s'exécutent dans le même espace mémoire.\\
+2 threads peuvent vouloir accéder à la même zone mémoire "en même
+temps".
+\begin{itemize}
+\item Un mutex est un sémaphore binaire pouvant prendre un état verrouillé ou
+déverrouillé.
+\item Un mutex ne peut être partagé que par des threads d'un même processus.
+\item Un mutex ne peut être verrouillé que par un seul thread à la fois.
+\item Un thread qui tente de verrouiller un mutex déjà verrouillé est suspendu jusqu'à ce
+que le mutex soit déverrouillé
+\end{itemize}
 
+
+Le thread est un processus léger et va permettre d'économiser des ressources systèmes (coût de création, changement de contexte et gérer des opérations bloquantes)
+
+\subsection{La synchronisation entre les différents threads}
+Pour le projet nous avons choisis l'utilisation des mutex sur les thread car comme énoncé au-dessus nous voulions avoir accès à ces possibilités.
+
+\section{Le Factory Pattern : patron de conception}
+La fabrique (factory method) est un patron de conception créationnel utilisé en programmation orientée objet. Elle permet d'instancier des objets dont le type est dérivé d'un type abstrait. La classe exacte de l'objet n'est donc pas connue par l'appelant.
+
+
+La première solution est de regrouper l'instanciation de tous les produits dans une seule classe chargée uniquement de ce rôle. On évite alors la duplication de code et on facilite l'évolution au niveau de la gamme des produits.
+\subsection{Implémentation dans le projet}
+Malgré le fait que le pattern Factory est supposé être utilisé pour la programmation orientée objet, nous avons pensé que ce pattern convenait très bien à ce que nous voulions faire.
+
+
+Ce pattern a été utilisé pour FactoryRobot et FactoryProduit, ceci a permis de regroupé tout ce qui doit être fait lors de la création d'un robot ou produit.\\
+De plus ce pattern permet une clarté du code et une meilleur essance dans la création des différents robots/produits, et ça permet aussi de modifié ou ajouter de nouveaux éléments dans les factory, c'est donc modulable.
+\subsubsection{FactoryRobot}
+La factoryRobot permet de créer des robots en passant en paramètre le numéro du robot désiré.
+\begin{lstlisting}[caption=Factory des robots]
+#ifndef LO41__FactoryRobot
+#define LO41__FactoryRobot
+
+#include "Robots.h"
+
+/* Pour le moment, je commente car j'ai une inclusion circulaire en mettant ca la, a corriger plus tard
+ // C'est donc mis dans Robots.h
+#define R1 1
+#define R2 2
+#define R3 3
+#define R4 4
+#define R5 5
+#define R6 6
+//*/
+
+robot * creerRobot(int numRobot);
+
+#endif
+\end{lstlisting}
+
+creerRobot alloue en mémoire le robot et l'initialise puis retourne le pointeur du robot.
+\begin{lstlisting}[caption=Code source de la création des robots]
+#include "FactoryRobot.h"
+
+robot* creerRobot(int numRobot){
+    
+    robot *rob = (robot*)malloc(sizeof(robot));
+    rob->mode = MODE_NORMAL;
+    int i;
+    for(i=0;i<TAILLE_MAX_NB_OP_DEGRADE;i++)
+        rob->opDegrade[i] = -1;
+    
+    for(i=0;i<TAILLE_MAX_NB_COMP_GARDE;i++)
+        rob->composant[i] = -1;
+    
+    rob->produit = NULL;
+    
+    rob->continuer = 1;
+    
+    switch(numRobot){
+        case R1:
+            rob->opNormal = Op1;
+            
+            rob->nbOpDegrade = 3;
+            rob->opDegrade[0] = Op1;
+            rob->opDegrade[1] = Op2;
+            rob->opDegrade[2] = Op5;
+            break;
+        case R2:
+            rob->opNormal = Op2;
+            
+            rob->nbOpDegrade = 2;
+            rob->opDegrade[0] = Op2;
+            rob->opDegrade[1] = Op1;
+            break;
+        case R3:
+            rob->opNormal = Op3;
+            
+            rob->nbOpDegrade = 3;
+            rob->opDegrade[0] = Op3;
+            rob->opDegrade[1] = Op4;
+            rob->opDegrade[2] = Op6;
+            break;
+        case R4:
+            rob->opNormal = Op4;
+            
+            rob->nbOpDegrade = 2;
+            rob->opDegrade[0] = Op4;
+            rob->opDegrade[1] = Op3;
+            break;
+        case R5:
+            rob->opNormal = Op5;
+            
+            rob->nbOpDegrade = 0;
+            break;
+        case R6:
+            rob->opNormal = Op6;
+            
+            rob->nbOpDegrade = 0;
+            break;
+        default:
+            
+            break;
+    }
+    return rob;
+}
+\end{lstlisting}
+\subsubsection{FactoryProduit}
+La factoryProduit permet de créer des produits en passant en paramètre le numéro du produit désiré.\\
+Le code source de la factoryProduit est similaire à la FactoryRobot
+\begin{lstlisting}[caption=Factory des Produits]
+#ifndef LO41__FactoryProduit
+#define LO41__FactoryProduit
+
+#include "Produit.h"
+#include "Composant.h"
+#include "Operation.h"
+
+#define Prod1 1
+#define Prod2 2
+#define Prod3 3
+#define Prod4 4
+
+produit* creerProduit(int numProduit);
+
+// renvoie le numDuProduit si suffisament de composant pour le creer / fonction special du au sujet et un produit n'a besoin que d'un seul type de composant / sinon renvoie 0
+int hasEnoughComposantToDoProd(int nb, int compo);
+
+#endif
+\end{lstlisting}
+
+\subsection{Conclusion du Pattern Factory et son utilité}
+Grâce aux Factory pattern le programme reste modulable, il est possible de créer des robots différents, d'ajouter de nouveaux éléments aux robots sans pour autant devoir modifier la création des robots partout dans le code puisque la création est regroupé en seul point, de créer de nouveaux produits, etc.
+
+\chapter{Modélisation en Réseau de Pétri}
+Le réseau de pétri ci-dessous modélise le projet dans son ensemble.\\
+Les robots ne sont pas recopiés mais c'est 6 fois la même représentation de réseau de pétri.
+\begin{figure}[!p!t]
+\center
+\includegraphics[angle=90,width=320pt]{rdp.png}
+\end{figure}
 
 \chapter{Conclusion}
+Ce projet a permis de mettre en place plusieurs notions vues en cours, TD et TP, et même d'aller plus loin avec les Factory. De plus il possible de mettre une quantité de composants bien supérieur à ce qui était demandé au minimum (103 composants à la base), il est possible d'en avoir une infinité grâce à notre architecture du programme.\\
+Ainsi on a pu utiliser nos connaissances et les approfondir.\\
+
+
+Pour terminer, nous pensons avoir atteint les objectifs qui étaient fixés : 
+\begin{itemize}
+\item Code modulable
+\item Threads ou processus
+\item Synchronisation\\
+\end{itemize}
+
+
+Nous en retirons une bonne expérience et trouvons le sujet intéressant et extrêment bien dosé dans sa complexité, sa longueur et son application du cours.
 
 \appendix
 \chapter{Documentation}
-Voici des documents qui m'ont été utiles et fut aussi dans le passé (pour d'autres projets) pour m'amener à réaliser ce projet.
+%Voici des documents qui m'ont été utiles et fut aussi dans le passé (pour d'autres projets) pour m'amener à réaliser ce projet.
 \section{Factory Pattern}
 
 \href{http://fr.wikipedia.org/wiki/Fabrique_(patron_de_conception)}{Wikipedia Fabrique: Patron de conception} (http://fr.wikipedia.org/wiki/Fabrique\_(patron\_de\_conception))
@@ -829,7 +1015,7 @@ Voici une bonne partie de mes réalisations en programmation.
 \href{https://github.com/Blackdread/}{Mes réalisations sur GitHub} (https://github.com/Blackdread/)
 \\
 
-\chapter{Exemples de code}
+%\chapter{Exemples de code}
 
 
 \end{document}

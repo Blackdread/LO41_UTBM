@@ -27,6 +27,7 @@ typedef struct _produit{
 int isProduitT0Done(const produit *prod);
 int isProduitDone(const produit *prod);
 
+// retourne le int de l'operation suivante sinon -1
 int popNextOp(produit *prod);
 
 // n'enleve pas l'operation

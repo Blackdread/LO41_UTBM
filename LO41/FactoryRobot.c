@@ -8,7 +8,6 @@
 
 #include "FactoryRobot.h"
 
-
 robot* creerRobot(int numRobot){
     
     robot *rob = (robot*)malloc(sizeof(robot));
@@ -70,5 +69,4 @@ robot* creerRobot(int numRobot){
             break;
     }
     return rob;
-    
 }
