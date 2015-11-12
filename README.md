@@ -16,4 +16,4 @@ pthread_mutex_t
 pthread_cond_t
 
 
-Code is documented but in french and english.
+Code is documented but in French and English.
